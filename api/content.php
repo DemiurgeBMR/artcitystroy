@@ -11,7 +11,8 @@ $action=$_POST['action']??'save';
 if($action==='save'){
  $raw=(string)($_POST['content']??'');$v=json_decode($raw,true);
  if(!is_array($v)||strlen($raw)>1500000)reviews_json(['ok'=>false,'error'=>'Некорректные данные редактора.'],422);
- $clean=['fields'=>[]];
+ $clean=['fields'=>[],'hidden'=>[]];
+ foreach(array_slice(is_array($v['hidden']??null)?$v['hidden']:[],0,30) as $section){$section=(string)$section;if(preg_match('/^(home|audience|laser|services|process|gallery|videos|about|contacts|footer)$/',$section))$clean['hidden'][]=$section;}
  foreach(($v['fields']??[]) as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,60}$/',$k))continue;$clean['fields'][$k]=mb_substr((string)$value,0,5000);}
  foreach(['products','steps','photos','videos','checks','audience'] as $key){
   $clean[$key]=[];
