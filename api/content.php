@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/../includes/reviews.php';
 require_once __DIR__.'/../includes/content.php';
 reviews_start_session();
+function content_limit(string $value,int $length): string { return function_exists('mb_substr')?mb_substr($value,0,$length):substr($value,0,$length); }
 $method=$_SERVER['REQUEST_METHOD']??'GET';
 if($method==='GET') reviews_json(['ok'=>true,'content'=>content_read()]);
 if($method!=='POST') reviews_json(['ok'=>false,'error'=>'Метод не поддерживается'],405);
@@ -13,13 +14,13 @@ if($action==='save'){
  if(!is_array($v)||strlen($raw)>1500000)reviews_json(['ok'=>false,'error'=>'Некорректные данные редактора.'],422);
  $clean=['fields'=>[],'hidden'=>[]];
  foreach(array_slice(is_array($v['hidden']??null)?$v['hidden']:[],0,30) as $section){$section=(string)$section;if(preg_match('/^(home|audience|laser|services|process|gallery|videos|about|contacts|footer)$/',$section))$clean['hidden'][]=$section;}
- foreach(($v['fields']??[]) as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,60}$/',$k))continue;$clean['fields'][$k]=mb_substr((string)$value,0,5000);}
+ foreach(($v['fields']??[]) as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,60}$/',$k))continue;$clean['fields'][$k]=content_limit((string)$value,5000);}
  foreach(['products','steps','photos','videos','checks','audience'] as $key){
   $clean[$key]=[];
   foreach(array_slice(is_array($v[$key]??null)?$v[$key]:[],0,250) as $item){
-   if(is_string($item)){$clean[$key][]=mb_substr($item,0,500);continue;}
+   if(is_string($item)){$clean[$key][]=content_limit($item,500);continue;}
    if(!is_array($item))continue;$row=[];
-   foreach($item as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,40}$/',$k))continue;$row[$k]=mb_substr((string)$value,0,3000);}
+   foreach($item as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,40}$/',$k))continue;$row[$k]=content_limit((string)$value,3000);}
    $clean[$key][]=$row;
   }
  }
@@ -28,7 +29,7 @@ if($action==='save'){
 }
 if($action==='upload'){
  if(empty($_FILES['file'])||($_FILES['file']['error']??4)!==0)reviews_json(['ok'=>false,'error'=>'Выберите файл для загрузки.'],422);
- $tmp=$_FILES['file']['tmp_name'];$size=(int)($_FILES['file']['size']??0);
+ $tmp=$_FILES['file']['tmp_name'];if(!is_uploaded_file($tmp))reviews_json(['ok'=>false,'error'=>'Некорректный загруженный файл.'],422);$size=(int)($_FILES['file']['size']??0);
  if($size>15*1024*1024)reviews_json(['ok'=>false,'error'=>'Максимальный размер файла — 15 МБ.'],422);
  $fi=new finfo(FILEINFO_MIME_TYPE);$mime=$fi->file($tmp);
  $allowed=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','video/mp4'=>'mp4','video/webm'=>'webm'];
