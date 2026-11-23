@@ -37,7 +37,7 @@ jobs:
           scripts = []
           for path in files:
               text = path.read_text(encoding='utf-8')
-              scripts.extend(re.findall(r'<script\\b[^>]*>(.*?)</script\\s*>', text, re.I | re.S))
+              scripts.extend(re.findall(r'<script\b[^>]*>(.*?)</script\s*>', text, re.I | re.S))
           if not scripts:
               raise SystemExit('No inline JavaScript blocks found')
           for i, script in enumerate(scripts):
