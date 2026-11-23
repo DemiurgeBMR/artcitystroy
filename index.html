@@ -68,4 +68,27 @@ document.getElementById('menu').addEventListener('click',()=>document.getElement
 document.querySelectorAll('.links a').forEach(a=>a.addEventListener('click',()=>document.getElementById('links').classList.remove('open')));
 document.getElementById('leadForm').addEventListener('submit',e=>{e.preventDefault();document.getElementById('formNotice').textContent='Форма интерфейса готова. Для отправки заявок подключите почтовый адрес и серверный обработчик.';});
 </script>
+<script>
+(async function(){
+ try{
+  const response=await fetch('/api/content.php',{cache:'no-store'});
+  const data=await response.json();
+  if(!response.ok||!data.ok||!Array.isArray(data.items))return;
+  data.items.forEach(item=>{
+   if(!item||!item.selector)return;
+   let nodes=[];try{nodes=document.querySelectorAll(item.selector)}catch(e){return}
+   nodes.forEach(node=>{
+    if(item.hidden)node.style.display='none';
+    if(item.text!==undefined&&item.text!=='')node.textContent=item.text;
+    if(item.src){
+     if(node.tagName==='IMG'||node.tagName==='IFRAME'||node.tagName==='VIDEO'||node.tagName==='SOURCE')node.setAttribute('src',item.src);
+     else if(node.tagName==='A')node.setAttribute('href',item.src);
+     else node.style.backgroundImage='url("'+item.src.replace(/["\\]/g,'')+'")';
+    }
+   });
+  });
+ }catch(e){console.warn('Content settings unavailable',e)}
+})();
+</script>
+
 </body></html>
