@@ -8,7 +8,7 @@ function content_read(): array {
  $v=json_decode((string)file_get_contents($f),true);
  if(!is_array($v))return ['configured'=>false,'fields'=>[],'hidden'=>[]];
  $v['configured']=true;
- foreach(['fields','hidden','products','steps','photos','videos','checks','audience'] as $k)if(!isset($v[$k])||!is_array($v[$k]))$v[$k]=[];
+ foreach(['fields','hidden','products','steps','photos','videos','checks','clients','audience'] as $k)if(!isset($v[$k])||!is_array($v[$k]))$v[$k]=[];
  return $v;
 }
 function content_write(array $data): bool {
