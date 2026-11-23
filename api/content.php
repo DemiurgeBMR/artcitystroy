@@ -15,7 +15,7 @@ if($action==='save'){
  $clean=['fields'=>[],'hidden'=>[]];
  foreach(array_slice(is_array($v['hidden']??null)?$v['hidden']:[],0,30) as $section){$section=(string)$section;if(preg_match('/^(home|audience|laser|services|process|gallery|videos|about|contacts|footer)$/',$section))$clean['hidden'][]=$section;}
  foreach(($v['fields']??[]) as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,60}$/',$k))continue;$clean['fields'][$k]=content_limit((string)$value,5000);}
- foreach(['products','steps','photos','videos','checks','audience'] as $key){
+ foreach(['products','steps','photos','videos','checks','clients','audience'] as $key){
   $clean[$key]=[];
   foreach(array_slice(is_array($v[$key]??null)?$v[$key]:[],0,250) as $item){
    if(is_string($item)){$clean[$key][]=content_limit($item,500);continue;}
