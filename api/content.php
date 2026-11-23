@@ -4,29 +4,25 @@ require_once __DIR__.'/../includes/reviews.php';
 require_once __DIR__.'/../includes/content.php';
 reviews_start_session();
 $method=$_SERVER['REQUEST_METHOD']??'GET';
-if($method==='GET') reviews_json(['ok'=>true,'items'=>content_read()['items']]);
+if($method==='GET') reviews_json(['ok'=>true,'content'=>content_read()]);
 if($method!=='POST') reviews_json(['ok'=>false,'error'=>'Метод не поддерживается'],405);
 reviews_require_admin(); reviews_check_csrf();
 $action=$_POST['action']??'save';
 if($action==='save'){
- $raw=(string)($_POST['items']??'');
- $items=json_decode($raw,true);
- if(!is_array($items)||count($items)>300)reviews_json(['ok'=>false,'error'=>'Некорректные данные редактора.'],422);
- $clean=[];
- foreach($items as $item){
-  if(!is_array($item))continue;
-  $selector=trim((string)($item['selector']??''));
-  if($selector===''||strlen($selector)>300)continue;
-  $clean[]=['selector'=>$selector,'text'=>substr((string)($item['text']??''),0,5000),'src'=>substr((string)($item['src']??''),0,1000),'hidden'=>!empty($item['hidden'])];
+ $raw=(string)($_POST['content']??'');$v=json_decode($raw,true);
+ if(!is_array($v)||strlen($raw)>1500000)reviews_json(['ok'=>false,'error'=>'Некорректные данные редактора.'],422);
+ $clean=['fields'=>[]];
+ foreach(($v['fields']??[]) as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,60}$/',$k))continue;$clean['fields'][$k]=mb_substr((string)$value,0,5000);}
+ foreach(['products','steps','photos','videos','checks','audience'] as $key){
+  $clean[$key]=[];
+  foreach(array_slice(is_array($v[$key]??null)?$v[$key]:[],0,250) as $item){
+   if(is_string($item)){$clean[$key][]=mb_substr($item,0,500);continue;}
+   if(!is_array($item))continue;$row=[];
+   foreach($item as $k=>$value){if(!is_string($k)||!preg_match('/^[a-z0-9_]{1,40}$/',$k))continue;$row[$k]=mb_substr((string)$value,0,3000);}
+   $clean[$key][]=$row;
+  }
  }
- if(!content_write(['items'=>$clean]))reviews_json(['ok'=>false,'error'=>'Не удалось сохранить настройки сайта.'],500);
- reviews_json(['ok'=>true]);
-}
-if($action==='delete_media'){
- $url=(string)($_POST['url']??'');
- if(!preg_match('~^/uploads/site/[a-f0-9]{32}\\.(jpg|png|webp|mp4|webm)$~',$url))reviews_json(['ok'=>false,'error'=>'Недопустимый адрес файла.'],422);
- $file=dirname(__DIR__).$url;
- if(is_file($file)&&!unlink($file))reviews_json(['ok'=>false,'error'=>'Не удалось удалить файл.'],500);
+ if(!content_write($clean))reviews_json(['ok'=>false,'error'=>'Не удалось сохранить настройки сайта.'],500);
  reviews_json(['ok'=>true]);
 }
 if($action==='upload'){
@@ -35,7 +31,7 @@ if($action==='upload'){
  if($size>15*1024*1024)reviews_json(['ok'=>false,'error'=>'Максимальный размер файла — 15 МБ.'],422);
  $fi=new finfo(FILEINFO_MIME_TYPE);$mime=$fi->file($tmp);
  $allowed=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','video/mp4'=>'mp4','video/webm'=>'webm'];
- if(!isset($allowed[$mime]))reviews_json(['ok'=>false,'error'=>'Разрешены изображения JPG/PNG/WebP и видео MP4/WebM.'],422);
+ if(!isset($allowed[$mime]))reviews_json(['ok'=>false,'error'=>'Разрешены JPG/PNG/WebP и MP4/WebM.'],422);
  if(str_starts_with($mime,'image/')&&@getimagesize($tmp)===false)reviews_json(['ok'=>false,'error'=>'Файл изображения повреждён.'],422);
  $dir=dirname(__DIR__).'/uploads/site';
  if(!is_dir($dir)&&!mkdir($dir,0755,true)&&!is_dir($dir))reviews_json(['ok'=>false,'error'=>'Не удалось создать папку загрузок.'],500);
