@@ -22,6 +22,13 @@ if($action==='save'){
  if(!content_write(['items'=>$clean]))reviews_json(['ok'=>false,'error'=>'Не удалось сохранить настройки сайта.'],500);
  reviews_json(['ok'=>true]);
 }
+if($action==='delete_media'){
+ $url=(string)($_POST['url']??'');
+ if(!preg_match('~^/uploads/site/[a-f0-9]{32}\\.(jpg|png|webp|mp4|webm)$~',$url))reviews_json(['ok'=>false,'error'=>'Недопустимый адрес файла.'],422);
+ $file=dirname(__DIR__).$url;
+ if(is_file($file)&&!unlink($file))reviews_json(['ok'=>false,'error'=>'Не удалось удалить файл.'],500);
+ reviews_json(['ok'=>true]);
+}
 if($action==='upload'){
  if(empty($_FILES['file'])||($_FILES['file']['error']??4)!==0)reviews_json(['ok'=>false,'error'=>'Выберите файл для загрузки.'],422);
  $tmp=$_FILES['file']['tmp_name'];$size=(int)($_FILES['file']['size']??0);
