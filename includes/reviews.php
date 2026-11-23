@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-function reviews_private_dir(): string { return dirname(__DIR__) . '/private'; }
+function reviews_private_dir(): string { return dirname(__DIR__, 2) . '/private'; }
 function reviews_config(): array { $f=reviews_private_dir().'/admin.php'; if(!is_file($f)) return []; $v=require $f; return is_array($v)?$v:[]; }
 function reviews_data_file(): string { return reviews_private_dir().'/reviews.json'; }
 function reviews_read_all(): array { $f=reviews_data_file(); if(!is_file($f)) return []; $v=json_decode((string)file_get_contents($f),true); return is_array($v)?$v:[]; }
