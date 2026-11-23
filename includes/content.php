@@ -4,9 +4,10 @@ function content_private_dir(): string { return dirname(__DIR__, 2).'/private'; 
 function content_file(): string { return content_private_dir().'/site-content.json'; }
 function content_read(): array {
  $f=content_file();
- if(!is_file($f)) return ['fields'=>[],'hidden'=>[]];
+ if(!is_file($f)) return ['configured'=>false,'fields'=>[],'hidden'=>[]];
  $v=json_decode((string)file_get_contents($f),true);
- if(!is_array($v))return ['fields'=>[],'products'=>[],'steps'=>[],'photos'=>[],'videos'=>[],'checks'=>[],'audience'=>[]];
+ if(!is_array($v))return ['configured'=>false,'fields'=>[],'hidden'=>[]];
+ $v['configured']=true;
  foreach(['fields','hidden','products','steps','photos','videos','checks','audience'] as $k)if(!isset($v[$k])||!is_array($v[$k]))$v[$k]=[];
  return $v;
 }
