@@ -68,7 +68,7 @@ function renderProjects(category='Все работы'){
 document.getElementById('photoFilters').innerHTML=photoCategories.map((x,i)=>'<button type="button" class="filter'+(i===0?' active':'')+'" data-category="'+x+'">'+x+'</button>').join('');
 document.getElementById('photoFilters').addEventListener('click',e=>{const b=e.target.closest('button[data-category]');if(b)renderProjects(b.dataset.category)});
 renderProjects();
-let reviewPhotoSet=[],reviewPhotoIndex=0;
+let reviewPhotoSet=[],reviewPhotoIndex=0,reviewPhotoStart=0,reviewTouchX=0;
 async function loadClientReviews(){
  const box=document.getElementById('reviewsList');
  try{
@@ -78,6 +78,7 @@ async function loadClientReviews(){
   if(!data.reviews.length){box.innerHTML='<p class="notice">Отзывы наших клиентов скоро появятся здесь.</p>';return}
   box.innerHTML=data.reviews.map((r,i)=>'<article class="review"><div class="review-top"><span class="review-mark">ОТЗЫВ КЛИЕНТА</span><span class="review-number">'+String(i+1).padStart(2,'0')+'</span></div>'+(r.text?'<p class="review-copy">'+escapeReviewText(r.text)+'</p>':'<p class="review-copy review-photo-note">К отзыву приложены фотографии</p>')+((r.photos||[]).length?'<div class="review-photos">'+(r.photos||[]).map((p,j)=>'<img loading="lazy" src="'+escapeReviewAttr(p)+'" alt="Фотография к отзыву" data-review-index="'+i+'" data-photo-index="'+j+'">').join('')+'</div>':'')+'</article>').join('');
   window.clientReviewPhotos=data.reviews.map(r=>r.photos||[]);
+  reviewPhotoSet=window.clientReviewPhotos.flat();
   const counter=document.getElementById('reviewsCounter');
   if(counter)counter.textContent=data.reviews.length+' '+(data.reviews.length===1?'отзыв':data.reviews.length<5?'отзыва':'отзывов');
   requestAnimationFrame(syncReviewControls);
@@ -86,12 +87,14 @@ async function loadClientReviews(){
 function escapeReviewText(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function escapeReviewAttr(s){return escapeReviewText(s)}
 const lightbox=document.getElementById('reviewLightbox'),lightboxImg=document.getElementById('lightboxImage');
-function showReviewPhoto(i){const arr=window.clientReviewPhotos||[];if(!arr.length)return;reviewPhotoIndex=(i+reviewPhotoSet.length)%reviewPhotoSet.length;lightboxImg.src=reviewPhotoSet[reviewPhotoIndex];}
-document.getElementById('reviewsList').addEventListener('click',e=>{const img=e.target.closest('img[data-photo-index]');if(!img)return;reviewPhotoSet=window.clientReviewPhotos[Number(img.dataset.reviewIndex)]||[];showReviewPhoto(Number(img.dataset.photoIndex));lightbox.classList.add('open');lightbox.setAttribute('aria-hidden','false')});
+function showReviewPhoto(i){if(!reviewPhotoSet.length)return;reviewPhotoIndex=(i+reviewPhotoSet.length)%reviewPhotoSet.length;lightboxImg.src=reviewPhotoSet[reviewPhotoIndex];}
+document.getElementById('reviewsList').addEventListener('click',e=>{const img=e.target.closest('img[data-photo-index]');if(!img)return;const allPhotos=window.clientReviewPhotos||[];reviewPhotoSet=allPhotos.flat();reviewPhotoStart=allPhotos.slice(0,Number(img.dataset.reviewIndex)).reduce((n,photos)=>n+photos.length,0);showReviewPhoto(reviewPhotoStart+Number(img.dataset.photoIndex));lightbox.classList.add('open');lightbox.setAttribute('aria-hidden','false');});
 lightbox.addEventListener('click',e=>{if(e.target===lightbox||e.target.classList.contains('lightbox-close')){lightbox.classList.remove('open');lightbox.setAttribute('aria-hidden','true')}});
 lightbox.querySelector('.lightbox-prev').addEventListener('click',()=>showReviewPhoto(reviewPhotoIndex-1));
 lightbox.querySelector('.lightbox-next').addEventListener('click',()=>showReviewPhoto(reviewPhotoIndex+1));
-document.addEventListener('keydown',e=>{if(!lightbox.classList.contains('open'))return;if(e.key==='Escape')lightbox.classList.remove('open');if(e.key==='ArrowLeft')showReviewPhoto(reviewPhotoIndex-1);if(e.key==='ArrowRight')showReviewPhoto(reviewPhotoIndex+1)});
+document.addEventListener('keydown',e=>{if(!lightbox.classList.contains('open'))return;if(e.key==='Escape'){lightbox.classList.remove('open');lightbox.setAttribute('aria-hidden','true')}if(e.key==='ArrowLeft'){e.preventDefault();showReviewPhoto(reviewPhotoIndex-1)}if(e.key==='ArrowRight'){e.preventDefault();showReviewPhoto(reviewPhotoIndex+1)}});
+lightbox.addEventListener('touchstart',e=>{reviewTouchX=e.changedTouches[0].screenX},{passive:true});
+lightbox.addEventListener('touchend',e=>{const delta=e.changedTouches[0].screenX-reviewTouchX;if(Math.abs(delta)>45)showReviewPhoto(reviewPhotoIndex+(delta<0?1:-1))},{passive:true});
 function syncReviewControls(){
  const box=document.getElementById('reviewsList'),prev=document.getElementById('reviewsPrev'),next=document.getElementById('reviewsNext');
  if(!box||!prev||!next)return;
