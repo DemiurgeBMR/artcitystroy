@@ -1,0 +1,49 @@
+name: Check site editor
+on:
+  pull_request:
+    paths:
+      - 'admin/**'
+      - 'api/**'
+      - 'includes/**'
+      - 'index.html'
+      - 'uploads/site/**'
+      - '.github/workflows/editor-check.yml'
+  workflow_dispatch:
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: fileinfo, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: PHP syntax
+        run: |
+          php -l includes/reviews.php
+          php -l includes/content.php
+          php -l admin/api.php
+          php -l admin/content.php
+          php -l api/content.php
+          php -l api/reviews.php
+      - name: JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, subprocess, tempfile
+          files = [pathlib.Path('index.html'), pathlib.Path('admin/content.php')]
+          scripts = []
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+              scripts.extend(re.findall(r'<script\b[^>]*>(.*?)</script\s*>', text, re.I | re.S))
+          if not scripts:
+              raise SystemExit('No inline JavaScript blocks found')
+          for i, script in enumerate(scripts):
+              with tempfile.NamedTemporaryFile('w', suffix='.js', encoding='utf-8') as f:
+                  f.write(script)
+                  f.flush()
+                  subprocess.run(['node', '--check', f.name], check=True)
+          print(f'Checked {len(scripts)} inline JavaScript blocks')
+          PY
