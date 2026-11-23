@@ -1,0 +1,28 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../includes/reviews.php';
+reviews_start_session();
+?><!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Редактор сайта — АртСитиСтрой</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f6;color:#17232c;font:15px Arial,sans-serif}.wrap{width:min(1100px,calc(100% - 28px));margin:28px auto}.top,.actions{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}.panel,.item{background:white;border:1px solid #e1e6e8;border-radius:12px;padding:18px;margin:14px 0}.item{display:grid;grid-template-columns:1.1fr 1.3fr 1.3fr auto;gap:10px;align-items:start}.item input,.item textarea{width:100%;padding:10px;border:1px solid #ccd4d8;border-radius:7px;font:inherit}.item textarea{min-height:74px}.item label{font-size:12px;color:#68757d;display:grid;gap:5px}button,.btn{border:0;border-radius:8px;padding:11px 15px;background:#ed6b25;color:#fff;font-weight:bold;cursor:pointer}.secondary{background:#263640}.danger{background:#a93226}.hint{color:#68757d;font-size:13px}.msg{margin:12px 0;color:#27623c}@media(max-width:760px){.item{grid-template-columns:1fr}.wrap{margin:16px auto}}
+</style></head><body><main class="wrap">
+<div class="top"><div><h1>Редактор содержимого сайта</h1><p class="hint">Изменяйте текст и адреса изображений/видео. Изменения публикуются на главной странице после сохранения.</p></div><div class="actions"><a href="/admin/">Отзывы</a><a href="/">Открыть сайт</a></div></div>
+<section class="panel" id="login"><h2>Вход администратора</h2><form id="loginForm"><p><input name="email" type="email" required value="sergejacenko765@gmail.com" placeholder="Email"></p><p><input name="password" type="password" required placeholder="Пароль"></p><button>Войти</button><div id="loginMsg" class="hint"></div></form></section>
+<section id="editor" class="hidden"><div class="panel"><div class="actions"><h2>Элементы страницы</h2><div><button type="button" id="add" class="secondary">Добавить элемент</button> <button type="button" id="save">Сохранить изменения</button></div></div><p class="hint">CSS-селектор указывает элемент страницы: например <code>.hero h1</code>, <code>.hero p</code>, <code>.video-frame iframe</code>, <code>.project img</code>. Для изображения или видео укажите новый URL либо загрузите файл ниже. Флажок «Скрыть» убирает выбранный элемент с сайта.</p><div id="items"></div><div id="msg" class="msg"></div></div>
+<div class="panel"><h2>Загрузить фото или видео</h2><input type="file" id="upload" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"> <button type="button" id="uploadBtn">Загрузить файл</button><p class="hint">До 15 МБ. После загрузки скопируйте полученный адрес в поле «URL медиа» нужного элемента.</p><div id="uploadMsg" class="msg"></div></div></section>
+</main><script>
+let csrf=null,items=[];
+const $=s=>document.querySelector(s);
+async function req(url,opts={}){const r=await fetch(url,{credentials:'same-origin',...opts});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||'Ошибка');return d}
+function enter(){ $('#login').style.display='none';$('#editor').classList.remove('hidden');load() }
+async function load(){try{items=(await req('/api/content.php')).items;draw()}catch(e){$('#msg').textContent=e.message}}
+function draw(){ $('#items').innerHTML=items.map((x,i)=>'<div class="item" data-i="'+i+'"><label>CSS-селектор<input data-k="selector" value="'+esc(x.selector||'')+'" placeholder=".hero h1"></label><label>Текст элемента<textarea data-k="text">'+esc(x.text||'')+'</textarea></label><label>URL медиа (фото/видео)<input data-k="src" value="'+esc(x.src||'')+'" placeholder="/uploads/site/file.jpg"></label><label><input type="checkbox" data-k="hidden" '+(x.hidden?'checked':'')+'> Скрыть <button type="button" class="danger remove">Удалить настройку</button></label></div>').join('') }
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function collect(){return [...$('#items').children].map(el=>{const o={};el.querySelectorAll('[data-k]').forEach(n=>o[n.dataset.k]=n.type==='checkbox'?n.checked:n.value);return o})}
+$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();try{const d=await req('/admin/api.php?action=login',{method:'POST',body:new FormData(e.currentTarget)});csrf=d.csrf;enter()}catch(x){$('#loginMsg').textContent=x.message}});
+$('#add').onclick=()=>{items=collect();items.push({selector:'',text:'',src:'',hidden:false});draw()};
+$('#items').addEventListener('click',e=>{if(e.target.classList.contains('remove')){items=collect();items.splice(Number(e.target.closest('[data-i]').dataset.i),1);draw()}});
+$('#save').onclick=async()=>{try{const fd=new FormData();fd.append('action','save');fd.append('csrf',csrf);fd.append('items',JSON.stringify(collect()));await req('/api/content.php',{method:'POST',headers:{'X-CSRF-Token':csrf},body:fd});$('#msg').textContent='Сохранено. Обновите главную страницу, чтобы увидеть изменения.'}catch(e){$('#msg').textContent=e.message}};
+$('#uploadBtn').onclick=async()=>{const f=$('#upload').files[0];if(!f){$('#uploadMsg').textContent='Сначала выберите файл.';return}const fd=new FormData();fd.append('action','upload');fd.append('csrf',csrf);fd.append('file',f);try{const d=await req('/api/content.php',{method:'POST',headers:{'X-CSRF-Token':csrf},body:fd});$('#uploadMsg').textContent='Загружено: '+d.url+' — скопируйте адрес в поле URL медиа.'}catch(e){$('#uploadMsg').textContent=e.message}};
+(async()=>{try{const d=await req('/admin/api.php?action=status');if(d.authenticated){csrf=d.csrf;enter()}}catch(e){}})();
+</script></body></html>
