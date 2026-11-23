@@ -69,25 +69,32 @@ document.querySelectorAll('.links a').forEach(a=>a.addEventListener('click',()=>
 document.getElementById('leadForm').addEventListener('submit',e=>{e.preventDefault();document.getElementById('formNotice').textContent='Форма интерфейса готова. Для отправки заявок подключите почтовый адрес и серверный обработчик.';});
 </script>
 <script>
-(async function(){
- try{
-  const response=await fetch('/api/content.php',{cache:'no-store'});
-  const data=await response.json();
-  if(!response.ok||!data.ok||!Array.isArray(data.items))return;
-  data.items.forEach(item=>{
-   if(!item||!item.selector)return;
-   let nodes=[];try{nodes=document.querySelectorAll(item.selector)}catch(e){return}
-   nodes.forEach(node=>{
-    if(item.hidden)node.style.display='none';
-    if(item.text!==undefined&&item.text!=='')node.textContent=item.text;
-    if(item.src){
-     if(node.tagName==='IMG'||node.tagName==='IFRAME'||node.tagName==='VIDEO'||node.tagName==='SOURCE')node.setAttribute('src',item.src);
-     else if(node.tagName==='A')node.setAttribute('href',item.src);
-     else node.style.backgroundImage='url("'+item.src.replace(/["\\]/g,'')+'")';
-    }
-   });
-  });
- }catch(e){console.warn('Content settings unavailable',e)}
+(async()=>{
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const txt=(s,v)=>{const n=document.querySelector(s);if(n&&v!==undefined&&v!=='')n.textContent=v};
+const url=v=>String(v||'').startsWith('/')||/^https?:\/\//i.test(v)?v:'/images/'+v;
+try{
+const r=await fetch('/api/content.php',{cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok||!d.content)return;
+const c=d.content,f=c.fields||{};
+txt('.top .container span:first-child',f.topline);txt('.top .container span:last-child',f.hours);
+txt('.hero .eyebrow',f.hero_kicker);txt('.hero h1',f.hero_title);txt('.hero > .container > p',f.hero_text);txt('.hero-actions .btn:first-child',f.hero_button);
+[['stat1_value','.stat:nth-child(1) strong'],['stat1_label','.stat:nth-child(1) span'],['stat2_value','.stat:nth-child(2) strong'],['stat2_label','.stat:nth-child(2) span'],['stat3_value','.stat:nth-child(3) strong'],['stat3_label','.stat:nth-child(3) span']].forEach(([k,s])=>txt('.stats '+s,f[k]));
+const map={audience:[['.section:not(.soft):not(.dark) .head h2','audience_title'],['.section:not(.soft):not(.dark) .head p','audience_text']],laser:[['#laser-cutting .laser-kicker','laser_kicker'],['#laser-cutting .laser-copy h2','laser_title'],['#laser-cutting .laser-copy p','laser_text']],services:[['#services .head .eyebrow','services_kicker'],['#services .head h2','services_title'],['#services .head p','services_text']],process:[['#process .head .eyebrow','process_kicker'],['#process .head h2','process_title'],['#process .head p','process_text']],gallery:[['#projects .head .eyebrow','gallery_kicker'],['#projects .head h2','gallery_title'],['#projects .head p','gallery_text']],videos:[['#videos .head .eyebrow','videos_kicker'],['#videos .head h2','videos_title'],['#videos .head p','videos_text']],about:[['#about .head .eyebrow','about_kicker'],['#about .head h2','about_title'],['#about .head p','about_text']],contacts:[['#contacts .head .eyebrow','contacts_kicker'],['#contacts .head h2','contacts_title'],['#contacts .head p','contacts_text']]};
+Object.values(map).flat().forEach(([s,k])=>txt(s,f[k]));
+if(f.laser_max)txt('#laser-cutting .laser-number',f.laser_max+' мм');
+if(f.laser_points){const n=document.querySelector('.laser-points');if(n)n.innerHTML=f.laser_points.split(/\n+/).filter(Boolean).map(x=>'<span>'+esc(x)+'</span>').join('')}
+txt('#laser-cutting .laser-copy .btn',f.laser_button);
+if(f.address){const n=document.querySelector('#contacts .contact-card p');if(n)n.innerHTML='<b>Адрес</b><br>'+esc(f.address)}
+if(f.email){const n=document.querySelector('a[href^="mailto:"]');if(n){n.textContent=f.email;n.href='mailto:'+f.email}}
+if(f.work_hours){const n=[...document.querySelectorAll('#contacts .contact-card p')].find(x=>x.textContent.includes('Режим работы'));if(n)n.innerHTML='<b>Режим работы</b><br>'+esc(f.work_hours)}
+if(f.footer_text)txt('.footer-grid>div:first-child p',f.footer_text);
+if(Array.isArray(c.products)&&c.products.length){['metal','gates','buildings'].forEach(g=>{const n=document.getElementById(g);if(n)n.innerHTML=c.products.filter(x=>x.group===g).map(x=>'<article class="product"><img loading="lazy" src="'+esc(url(x.image))+'" alt="'+esc(x.title)+'"><div class="body"><h3>'+esc(x.title)+'</h3><p>'+esc(x.text)+'</p><span class="price">'+esc(x.price)+'</span></div></article>').join('')})}
+if(Array.isArray(c.audience)&&c.audience.length){const n=document.querySelector('.audience');if(n)n.innerHTML=c.audience.map(x=>'<article class="tile"><div class="ico">'+esc(x.icon)+'</div><h3>'+esc(x.title)+'</h3><p>'+esc(x.text)+'</p></article>').join('')}
+if(Array.isArray(c.steps)&&c.steps.length){const n=document.querySelector('#process .steps');if(n)n.innerHTML=c.steps.map(x=>'<article class="step"><div class="num">'+esc(x.number)+'</div><h3>'+esc(x.title)+'</h3><p>'+esc(x.text)+'</p></article>').join('')}
+if(Array.isArray(c.checks)&&c.checks.length){const n=document.querySelector('#about .checks');if(n)n.innerHTML=c.checks.map(x=>'<div class="check">✓<b>'+esc(typeof x==='string'?x:x.title)+'</b></div>').join('')}
+if(Array.isArray(c.photos)&&c.photos.length){const cats=['Все работы',...new Set(c.photos.map(x=>x.category||'Без категории'))],filters=document.getElementById('photoFilters'),list=document.getElementById('projectList');function render(cat){list.innerHTML=c.photos.filter(x=>cat==='Все работы'||(x.category||'Без категории')===cat).map(x=>'<article class="project"><img loading="lazy" src="'+esc(url(x.image))+'" alt="'+esc(x.title||'')+'"><div><h3>'+esc(x.title||'')+'</h3><p>'+esc(x.caption||'')+'</p></div></article>').join('');filters.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.category===cat))}filters.innerHTML=cats.map((x,i)=>'<button type="button" class="filter'+(i===0?' active':'')+'" data-category="'+esc(x)+'">'+esc(x)+'</button>').join('');filters.onclick=e=>{const b=e.target.closest('[data-category]');if(b)render(b.dataset.category)};render('Все работы')}
+if(Array.isArray(c.videos)&&c.videos.length){const n=document.querySelector('#videos .video-grid');if(n)n.innerHTML=c.videos.map(v=>{let u=String(v.url||'');if(/youtube\.com\/watch\?v=/i.test(u))u='https://www.youtube-nocookie.com/embed/'+(u.split('v=')[1]||'').split('&')[0];if(/youtu\.be\//i.test(u))u='https://www.youtube-nocookie.com/embed/'+u.split('youtu.be/')[1].split(/[?&]/)[0];const m=/\.(mp4|webm)(\?|$)/i.test(u)?'<video controls playsinline src="'+esc(u)+'"></video>':'<iframe src="'+esc(u)+'" title="'+esc(v.title||'Видео производства')+'" loading="lazy" allowfullscreen></iframe>';return '<article><div class="video-frame">'+m+'</div></article>'}).join('')}
+}catch(e){console.warn('Site content settings unavailable',e)}
 })();
 </script>
 
