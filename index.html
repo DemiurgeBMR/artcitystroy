@@ -76,6 +76,7 @@ const url=v=>String(v||'').startsWith('/')||/^https?:\/\//i.test(v)?v:'/images/'
 try{
 const r=await fetch('/api/content.php',{cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok||!d.content)return;
 const c=d.content,f=c.fields||{};
+const hiddenMap={home:'.hero',audience:'.section:not(.soft):not(.dark)',laser:'#laser-cutting',services:'#services',process:'#process',gallery:'#projects',videos:'#videos',about:'#about',contacts:'#contacts',footer:'.footer'};(c.hidden||[]).forEach(k=>{const n=document.querySelector(hiddenMap[k]);if(n)n.style.display='none'});
 txt('.top .container span:first-child',f.topline);txt('.top .container span:last-child',f.hours);
 txt('.hero .eyebrow',f.hero_kicker);txt('.hero h1',f.hero_title);txt('.hero > .container > p',f.hero_text);txt('.hero-actions .btn:first-child',f.hero_button);
 [['stat1_value','.stat:nth-child(1) strong'],['stat1_label','.stat:nth-child(1) span'],['stat2_value','.stat:nth-child(2) strong'],['stat2_label','.stat:nth-child(2) span'],['stat3_value','.stat:nth-child(3) strong'],['stat3_label','.stat:nth-child(3) span']].forEach(([k,s])=>txt('.stats '+s,f[k]));
